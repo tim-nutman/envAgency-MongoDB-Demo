@@ -1,0 +1,28 @@
+{
+  "name": "MDB_SA_Demo_App",
+  "version": "0.1.0",
+  "description": "SA Demonstrations for MongDB",
+  "main": "app.js",
+  "dependencies": {
+    "async": "^2.6.0",
+    "body-parser": "~1.15.0",
+    "cluster": "*",
+    "express": "~4.13.3",
+    "http": "*",
+    "mongodb": "*",
+    "nunjucks": "~2.2.0",
+    "nunjucks-date": "~1.2.0",
+    "os": "*",
+    "request": "*",
+    "socket.io": "^2.0.4"
+  },
+  "author": "Tim Nutman",
+  "license": "0BSD",
+  "devDependencies": {
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-node": "^6.0.0",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1"
+  }
+}

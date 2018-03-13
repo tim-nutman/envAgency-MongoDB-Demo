@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Simple MongoDB application - base</title>
+		
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+		<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+		
+		<script>
+			$(function () {
+				var socket = io();
+				
+				socket.on('stock price update', function(stockprice) {
+					$('#stockprice').text(stockprice);
+				});
+				
+			});
+		</script>
+		
+		<style>
+      		#map {
+        			height: 400px;
+        			width: 100%;
+       		}
+    </style>
+		
+	</head>
+	<body>
+		<h1>Number of stations: {{totalStations}}</h1>
+		<p>Welcome to the MongoDB home page: <span id="stockprice">no data yet</span></p>
+		<p>UI Test - list of Catchment Areas in a list<p>
+		
+		<form>
+			<select id="catchmentList" onchange="getRiversForCatchmentArea('catchmentList','riversInCatchmentList');getMonitoringStationsGeo('catchmentName','catchmentList');">
+				<option>Please select...</option>
+			</select>
+			<select id="riversInCatchmentList" onchange="getMonitoringStationsGeo('riverName','riversInCatchmentList')">
+				<option>Please select a catchment area to find rivers</option>
+			</select>
+		</form>
+		
+		<button onclick="populateSelectList('catchmentNames', 'catchmentList');"></button>
+		
+		<p>UI Test - list of River Names in a list<p>
+		
+		<form>
+			<select id="riverList" onchange="getMonitoringStationsGeo('riverName','riverList')">
+				<option>Please select...</option>
+			</select>
+		</form>
+		
+		<button onclick="populateSelectList('riverNames', 'riverList');"></button>
+		
+		<hr></hr>
+		
+		<h2 id="resultTitle">Monitoring Stations</h2>
+		<p></p>
+		<div id="results"></div>
+		<div id="map"></div>
+		
+	
+		
+	<script>
+	var markers = [];
+	var markerCount = 0;
+	var map;
+    
+	//initialises the Google Map
+	function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 2,
+        center: new google.maps.LatLng(2.8,-187.3),
+        mapTypeId: 'terrain'
+      });
+    }
+	
+	//takes an array of data (arrayName[index].geoloc and .label) to construct array of markers (lat, long)
+	function addMarkers(data) {
+		bounds  = new google.maps.LatLngBounds();
+		var infowindow = new google.maps.InfoWindow();
+		for (var k = 0; k < data.length; k++) {
+			var coords = data[k].geoloc;
+	        var latLng = new google.maps.LatLng(coords[1],coords[0]);
+	        bounds.extend(latLng);
+	        var marker = new google.maps.Marker({
+	            position: latLng,
+	            animation: google.maps.Animation.DROP,
+	            id: k,
+	        		title: data[k].label
+	          });
+	        markers.push(marker);
+	        google.maps.event.addListener(marker, 'click', (function(marker,
+					k) {
+				return function() {
+					infowindow.setContent(data[k].label);
+					infowindow.open(map, marker);
+				}
+			})(marker, k));
+		}
+		map.fitBounds(bounds);
+		map.panToBounds(bounds);
+	}
+	
+	//sets the map to display the array of markers (displays the locations using default icon)
+	//passing null into the function effectively removes the markers
+	function setMapOnAll(map) {
+        for (var i = 0; i < markers.length; i++) {
+          markers[i].setMap(map);
+        }
+    }
+	
+	//calls setMap passing null to remove the last set of pointers and clears the maerkers array
+	function deleteMarkers() {
+		setMapOnAll(null);
+		markers = [];
+	}
+
+		
+		
+		function getMonitoringStationsGeo(fieldName, sourceId) {
+			$.ajax({url: "/getMonitoringStationsGeo", data:"fieldName="+fieldName+"&fieldValue="+$('#'+sourceId).find(":selected").text(), dataType: "json", success: function(result){
+				//clear the current map
+				deleteMarkers()
+				//set up the array of markers
+				addMarkers(result);
+				//display the current array of markers
+				setMapOnAll(map);
+				
+			}});
+		};
+	
+		function getMonitoringStations(fieldName, sourceId) {
+			$.ajax({url: "/getMonitoringStations", data:"fieldName="+fieldName+"&fieldValue="+$('#'+sourceId).find(":selected").text(), dataType: "json", success: function(result){
+				var selectList = "<ul>";
+				for (var k in result) {
+					selectList = selectList + "<li>" + result[k].label + ", Long: " + result[k].geoloc[0] + " Lat: " + result[k].geoloc[1] + "</li>";
+				}
+				selectList = selectList + "</ul>";
+		        $("#results").html(selectList);
+		        $("#resultTitle").html("Monitoring Stations for " + fieldName + " " + $('#'+sourceId).find(":selected").text())
+			}});
+		};
+	
+		function getRiversForCatchmentArea(sourceId, targetId) {
+			$.ajax({url: "/riverNamesInCatchmentArea", data:"catchmentName="+$('#'+sourceId).find(":selected").text(), dataType: "json", success: function(result){
+				var selectList = "";
+				for (var k in result) {
+					selectList = selectList + "<option value='" + result[k]._id + "'>" + result[k]._id + "</option>";
+				}
+		        $("#"+targetId).html(selectList);
+			}});
+		};
+		
+		function populateSelectListWithParams(targetId) {
+			
+		}
+
+		
+		//Call end point on node backend - retrieve array of catchment names.
+		//Loop through the array constructing a string for the option list.
+		//update the HTML in the form with the new items
+		
+		function populateSelectList(endPoint, targetId) {
+			$.ajax({url: "/"+endPoint, dataType: "json", success: function(result){
+				var selectList = "";
+				for (var k in result) {
+					selectList = selectList + "<option value='" + result[k]._id + "'>" + result[k]._id + "</option>";
+				}
+		        $("#"+targetId).html(selectList);
+			}});
+		}
+		
+
+
+		
+		//OLD CODE - to be removed
+		//This function will add a marker to the map each time it 
+		//is called.  It takes latitude, longitude, and html markup
+		//for the content you want to appear in the info window 
+		//for the marker.
+		function addMarkerToMap(mylat, mylong, htmlMarkupForInfoWindow){
+			
+		    var infowindow = new google.maps.InfoWindow();
+		    //var myLatLng = new google.maps.LatLng(lat, long);
+		    var myLatLng = {lat: mylat, lng: mylong};
+		    console.log(myLatLng);
+		    var marker = new google.maps.Marker({
+		        position: myLatLng,
+		        map: map
+		    });
+		    //Gives each marker an Id for the on click
+		    markerCount++;
+
+		    //Creates the event listener for clicking the marker
+		    //and places the marker on the map
+		    
+		    google.maps.event.addListener(marker, 'click', (function(marker,
+					markerCount) {
+				return function() {
+					infowindow.setContent(htmlMarkupForInfoWindow);
+					infowindow.open(map, marker);
+				}
+			})(marker, markerCount));
+
+			//Pans map to the new location of the marker
+			//map.panTo(myLatLng)        
+		}
+
+	</script>
+	
+	
+	<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA7EkVv4dmOp2FextoYiRa5wKkzmRsRoZE&callback=initMap"></script>
+	 
+	
+	</body>
+</html>
